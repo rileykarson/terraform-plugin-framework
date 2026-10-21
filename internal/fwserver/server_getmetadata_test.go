@@ -728,6 +728,86 @@ func TestServerGetMetadata(t *testing.T) {
 				},
 			},
 		},
+		"listresources-raw-v5-schemas": {
+			server: &fwserver.Server{
+				Provider: &testprovider.Provider{
+					ListResourcesMethod: func(_ context.Context) []func() list.ListResource {
+						return []func() list.ListResource{
+							func() list.ListResource {
+								return &testprovider.ListResourceWithRawV5Schemas{
+									ListResource: &testprovider.ListResource{
+										MetadataMethod: func(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+											resp.TypeName = "test_resource_1"
+										},
+									},
+									RawV5SchemasMethod: func(_ context.Context, _ list.RawV5SchemaRequest, _ *list.RawV5SchemaResponse) {
+										t.Fatal("RawV5Schemas should not be called during GetMetadata")
+									},
+								}
+							},
+						}
+					},
+				},
+			},
+			request: &fwserver.GetMetadataRequest{},
+			expectedResponse: &fwserver.GetMetadataResponse{
+				Actions:            []fwserver.ActionMetadata{},
+				DataSources:        []fwserver.DataSourceMetadata{},
+				EphemeralResources: []fwserver.EphemeralResourceMetadata{},
+				Diagnostics:        diag.Diagnostics{},
+				Functions:          []fwserver.FunctionMetadata{},
+				ListResources: []fwserver.ListResourceMetadata{
+					{TypeName: "test_resource_1"},
+				},
+				Resources: []fwserver.ResourceMetadata{},
+				ServerCapabilities: &fwserver.ServerCapabilities{
+					GetProviderSchemaOptional: true,
+					MoveResourceState:         true,
+					PlanDestroy:               true,
+					GenerateResourceConfig:    true,
+				},
+			},
+		},
+		"listresources-raw-v6-schemas": {
+			server: &fwserver.Server{
+				Provider: &testprovider.Provider{
+					ListResourcesMethod: func(_ context.Context) []func() list.ListResource {
+						return []func() list.ListResource{
+							func() list.ListResource {
+								return &testprovider.ListResourceWithRawV6Schemas{
+									ListResource: &testprovider.ListResource{
+										MetadataMethod: func(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+											resp.TypeName = "test_resource_1"
+										},
+									},
+									RawV6SchemasMethod: func(_ context.Context, _ list.RawV6SchemaRequest, _ *list.RawV6SchemaResponse) {
+										t.Fatal("RawV6Schemas should not be called during GetMetadata")
+									},
+								}
+							},
+						}
+					},
+				},
+			},
+			request: &fwserver.GetMetadataRequest{},
+			expectedResponse: &fwserver.GetMetadataResponse{
+				Actions:            []fwserver.ActionMetadata{},
+				DataSources:        []fwserver.DataSourceMetadata{},
+				EphemeralResources: []fwserver.EphemeralResourceMetadata{},
+				Diagnostics:        diag.Diagnostics{},
+				Functions:          []fwserver.FunctionMetadata{},
+				ListResources: []fwserver.ListResourceMetadata{
+					{TypeName: "test_resource_1"},
+				},
+				Resources: []fwserver.ResourceMetadata{},
+				ServerCapabilities: &fwserver.ServerCapabilities{
+					GetProviderSchemaOptional: true,
+					MoveResourceState:         true,
+					PlanDestroy:               true,
+					GenerateResourceConfig:    true,
+				},
+			},
+		},
 		"list-resources-empty-type-name": {
 			server: &fwserver.Server{
 				Provider: &testprovider.Provider{

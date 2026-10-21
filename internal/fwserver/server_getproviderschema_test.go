@@ -1231,6 +1231,118 @@ func TestServerGetProviderSchema(t *testing.T) {
 				StateStoreSchemas: map[string]fwschema.Schema{},
 			},
 		},
+		"listresource-schemas-raw-v5-schemas": {
+			server: &fwserver.Server{
+				Provider: &testprovider.Provider{
+					ListResourcesMethod: func(_ context.Context) []func() list.ListResource {
+						return []func() list.ListResource{
+							func() list.ListResource {
+								return &testprovider.ListResourceWithRawV5Schemas{
+									ListResource: &testprovider.ListResource{
+										ListResourceConfigSchemaMethod: func(_ context.Context, _ list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
+											resp.Schema = listschema.Schema{
+												Attributes: map[string]listschema.Attribute{
+													"test1": listschema.StringAttribute{
+														Required: true,
+													},
+												},
+											}
+										},
+										MetadataMethod: func(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+											resp.TypeName = "test_resource"
+										},
+									},
+									RawV5SchemasMethod: func(_ context.Context, _ list.RawV5SchemaRequest, _ *list.RawV5SchemaResponse) {
+										t.Fatal("RawV5Schemas should not be called during GetProviderSchema")
+									},
+								}
+							},
+						}
+					},
+				},
+			},
+			request: &fwserver.GetProviderSchemaRequest{},
+			expectedResponse: &fwserver.GetProviderSchemaResponse{
+				ActionSchemas:            map[string]actionschema.Schema{},
+				DataSourceSchemas:        map[string]fwschema.Schema{},
+				EphemeralResourceSchemas: map[string]fwschema.Schema{},
+				FunctionDefinitions:      map[string]function.Definition{},
+				ListResourceSchemas: map[string]fwschema.Schema{
+					"test_resource": listschema.Schema{
+						Attributes: map[string]listschema.Attribute{
+							"test1": listschema.StringAttribute{
+								Required: true,
+							},
+						},
+					},
+				},
+				Provider:        providerschema.Schema{},
+				ResourceSchemas: map[string]fwschema.Schema{},
+				ServerCapabilities: &fwserver.ServerCapabilities{
+					GetProviderSchemaOptional: true,
+					MoveResourceState:         true,
+					PlanDestroy:               true,
+					GenerateResourceConfig:    true,
+				},
+				StateStoreSchemas: map[string]fwschema.Schema{},
+			},
+		},
+		"listresource-schemas-raw-v6-schemas": {
+			server: &fwserver.Server{
+				Provider: &testprovider.Provider{
+					ListResourcesMethod: func(_ context.Context) []func() list.ListResource {
+						return []func() list.ListResource{
+							func() list.ListResource {
+								return &testprovider.ListResourceWithRawV6Schemas{
+									ListResource: &testprovider.ListResource{
+										ListResourceConfigSchemaMethod: func(_ context.Context, _ list.ListResourceSchemaRequest, resp *list.ListResourceSchemaResponse) {
+											resp.Schema = listschema.Schema{
+												Attributes: map[string]listschema.Attribute{
+													"test1": listschema.StringAttribute{
+														Required: true,
+													},
+												},
+											}
+										},
+										MetadataMethod: func(_ context.Context, _ resource.MetadataRequest, resp *resource.MetadataResponse) {
+											resp.TypeName = "test_resource"
+										},
+									},
+									RawV6SchemasMethod: func(_ context.Context, _ list.RawV6SchemaRequest, _ *list.RawV6SchemaResponse) {
+										t.Fatal("RawV6Schemas should not be called during GetProviderSchema")
+									},
+								}
+							},
+						}
+					},
+				},
+			},
+			request: &fwserver.GetProviderSchemaRequest{},
+			expectedResponse: &fwserver.GetProviderSchemaResponse{
+				ActionSchemas:            map[string]actionschema.Schema{},
+				DataSourceSchemas:        map[string]fwschema.Schema{},
+				EphemeralResourceSchemas: map[string]fwschema.Schema{},
+				FunctionDefinitions:      map[string]function.Definition{},
+				ListResourceSchemas: map[string]fwschema.Schema{
+					"test_resource": listschema.Schema{
+						Attributes: map[string]listschema.Attribute{
+							"test1": listschema.StringAttribute{
+								Required: true,
+							},
+						},
+					},
+				},
+				Provider:        providerschema.Schema{},
+				ResourceSchemas: map[string]fwschema.Schema{},
+				ServerCapabilities: &fwserver.ServerCapabilities{
+					GetProviderSchemaOptional: true,
+					MoveResourceState:         true,
+					PlanDestroy:               true,
+					GenerateResourceConfig:    true,
+				},
+				StateStoreSchemas: map[string]fwschema.Schema{},
+			},
+		},
 		"listresource-schemas-invalid-attribute-name": {
 			server: &fwserver.Server{
 				Provider: &testprovider.Provider{

@@ -5,6 +5,7 @@ package proto5server
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/internal/fromproto5"
@@ -64,8 +65,9 @@ func (s *Server) ListResource(ctx context.Context, protoReq *tfprotov5.ListResou
 		listResourceWithProtoSchemas.RawV5Schemas(ctx, list.RawV5SchemaRequest{}, &schemaResp)
 	}
 
-	// There's validation in ListResources that ensures both are set if either is provided so it should be sufficient to only nil check Identity
-	if schemaResp.ProtoV5IdentitySchema != nil {
+	resourceFuncs, _ := s.FrameworkServer.ResourceFuncs(ctx)
+
+	if schemaResp.ProtoV5Schema != nil && schemaResp.ProtoV5IdentitySchema != nil {
 		var err error
 
 		req.ResourceSchema, err = fromproto5.ResourceSchema(ctx, schemaResp.ProtoV5Schema)
@@ -81,7 +83,7 @@ func (s *Server) ListResource(ctx context.Context, protoReq *tfprotov5.ListResou
 			allDiags.Append(diags...)
 			return ListRequestErrorDiagnostics(ctx, allDiags...)
 		}
-	} else {
+	} else if _, ok := resourceFuncs[protoReq.TypeName]; ok && schemaResp.ProtoV5Schema == nil && schemaResp.ProtoV5IdentitySchema == nil {
 		req.ResourceSchema, diags = s.FrameworkServer.ResourceSchema(ctx, protoReq.TypeName)
 		allDiags.Append(diags...)
 		if diags.HasError() {
@@ -93,6 +95,16 @@ func (s *Server) ListResource(ctx context.Context, protoReq *tfprotov5.ListResou
 		if diags.HasError() {
 			return ListRequestErrorDiagnostics(ctx, allDiags...)
 		}
+	} else {
+		diags.AddError(
+			"ListResource Type Defined without a Matching Managed Resource Type",
+			fmt.Sprintf("The %s ListResource type name was returned, but no matching managed Resource type was defined. ", protoReq.TypeName)+
+				"If the matching managed Resource type is not a framework resource either ProtoV5Schema and ProtoV5IdentitySchema must be specified in the RawV5Schemas method, "+
+				"or ProtoV6Schema and ProtoV6IdentitySchema must be specified in the RawV6Schemas method. "+
+				"This is always an issue with the provider and should be reported to the provider developers.",
+		)
+		allDiags.Append(diags...)
+		return ListRequestErrorDiagnostics(ctx, allDiags...)
 	}
 
 	stream := &fwserver.ListResultsStream{}

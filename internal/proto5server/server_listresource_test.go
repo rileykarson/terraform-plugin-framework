@@ -243,6 +243,139 @@ func TestServerListResource(t *testing.T) {
 				},
 			},
 		},
+		"result-with-raw-v5-schemas": {
+			server: &Server{
+				FrameworkServer: fwserver.Server{
+					Provider: &testprovider.Provider{
+						ListResourcesMethod: func(ctx context.Context) []func() list.ListResource {
+							return []func() list.ListResource{
+								func() list.ListResource {
+									r, ok := listResource().(*testprovider.ListResource)
+									if !ok {
+										t.Fatal("listResource must be a testprovider.ListResource")
+									}
+
+									return &testprovider.ListResourceWithRawV5Schemas{
+										ListResource: r,
+										RawV5SchemasMethod: func(ctx context.Context, req list.RawV5SchemaRequest, resp *list.RawV5SchemaResponse) {
+											resp.ProtoV5Schema = &tfprotov5.Schema{
+												Block: &tfprotov5.SchemaBlock{
+													Attributes: []*tfprotov5.SchemaAttribute{
+														{
+															Name:     "id",
+															Type:     tftypes.String,
+															Optional: true,
+														},
+														{
+															Name:     "name",
+															Type:     tftypes.String,
+															Optional: true,
+														},
+													},
+												},
+											}
+											resp.ProtoV5IdentitySchema = &tfprotov5.ResourceIdentitySchema{
+												IdentityAttributes: []*tfprotov5.ResourceIdentitySchemaAttribute{
+													{
+														Name:              "id",
+														Type:              tftypes.String,
+														RequiredForImport: true,
+													},
+												},
+											}
+										},
+									}
+								},
+							}
+						},
+					},
+				},
+			},
+			request: &tfprotov5.ListResourceRequest{
+				TypeName:        "test_resource",
+				Config:          plateau,
+				IncludeResource: true,
+			},
+			expectedError:       nil,
+			expectedDiagnostics: diag.Diagnostics{},
+			expectedResults: []tfprotov5.ListResourceResult{
+				{
+					DisplayName: "plateau",
+					Identity:    expectedResourceIdentities["plateau"],
+					Resource:    expectedResources["plateau"],
+				},
+			},
+		},
+		"result-with-nil-raw-v5-schemas-fallback-to-framework-resource": {
+			server: server(func() list.ListResource {
+				r, ok := listResource().(*testprovider.ListResource)
+				if !ok {
+					t.Fatal("listResource must be a testprovider.ListResource")
+				}
+
+				return &testprovider.ListResourceWithRawV5Schemas{
+					ListResource: r,
+					RawV5SchemasMethod: func(ctx context.Context, req list.RawV5SchemaRequest, resp *list.RawV5SchemaResponse) {
+						// Return nil raw schemas; should fall back to managedResource schema.
+					},
+				}
+			}, managedResource),
+			request: &tfprotov5.ListResourceRequest{
+				TypeName:        "test_resource",
+				Config:          plateau,
+				IncludeResource: true,
+			},
+			expectedError:       nil,
+			expectedDiagnostics: diag.Diagnostics{},
+			expectedResults: []tfprotov5.ListResourceResult{
+				{
+					DisplayName: "plateau",
+					Identity:    expectedResourceIdentities["plateau"],
+					Resource:    expectedResources["plateau"],
+				},
+			},
+		},
+		"error-on-missing-raw-v5-schemas": {
+			server: &Server{
+				FrameworkServer: fwserver.Server{
+					Provider: &testprovider.Provider{
+						ListResourcesMethod: func(ctx context.Context) []func() list.ListResource {
+							return []func() list.ListResource{
+								func() list.ListResource {
+									r, ok := listResource().(*testprovider.ListResource)
+									if !ok {
+										t.Fatal("listResource must be a testprovider.ListResource")
+									}
+
+									return &testprovider.ListResourceWithRawV5Schemas{
+										ListResource: r,
+										RawV5SchemasMethod: func(ctx context.Context, req list.RawV5SchemaRequest, resp *list.RawV5SchemaResponse) {
+											// Intentionally leave ProtoV5Schema and ProtoV5IdentitySchema nil
+										},
+									}
+								},
+							}
+						},
+					},
+				},
+			},
+			request: &tfprotov5.ListResourceRequest{
+				TypeName: "test_resource",
+				Config:   plat,
+			},
+			expectedError:       nil,
+			expectedDiagnostics: diag.Diagnostics{},
+			expectedResults: []tfprotov5.ListResourceResult{
+				{
+					Diagnostics: []*tfprotov5.Diagnostic{
+						{
+							Severity: tfprotov5.DiagnosticSeverityError,
+							Summary:  "ListResource Type Defined without a Matching Managed Resource Type",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for name, testCase := range testCases {

@@ -85,19 +85,12 @@ func (s *Server) ListResourceFuncs(ctx context.Context) (map[string]func() list.
 			continue
 		}
 
-		rawV5SchemasResp := list.RawV5SchemaResponse{}
-		if listResourceWithSchemas, ok := listResource.(list.ListResourceWithRawV5Schemas); ok {
-			listResourceWithSchemas.RawV5Schemas(ctx, list.RawV5SchemaRequest{}, &rawV5SchemasResp)
-		}
-
-		rawV6SchemasResp := list.RawV6SchemaResponse{}
-		if listResourceWithSchemas, ok := listResource.(list.ListResourceWithRawV6Schemas); ok {
-			listResourceWithSchemas.RawV6Schemas(ctx, list.RawV6SchemaRequest{}, &rawV6SchemasResp)
-		}
-
 		resourceFuncs, _ := s.ResourceFuncs(ctx)
 		if _, ok := resourceFuncs[typeName]; !ok {
-			if (rawV5SchemasResp.ProtoV5Schema == nil || rawV5SchemasResp.ProtoV5IdentitySchema == nil) && (rawV6SchemasResp.ProtoV6Schema == nil || rawV6SchemasResp.ProtoV6IdentitySchema == nil) {
+			_, hasRawV5Schemas := listResource.(list.ListResourceWithRawV5Schemas)
+			_, hasRawV6Schemas := listResource.(list.ListResourceWithRawV6Schemas)
+
+			if !hasRawV5Schemas && !hasRawV6Schemas {
 				s.listResourceFuncsDiags.AddError(
 					"ListResource Type Defined without a Matching Managed Resource Type",
 					fmt.Sprintf("The %s ListResource type name was returned, but no matching managed Resource type was defined. ", typeName)+

@@ -5,6 +5,7 @@ package proto6server
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/internal/fromproto6"
@@ -64,7 +65,9 @@ func (s *Server) ListResource(ctx context.Context, protoReq *tfprotov6.ListResou
 		listResourceWithProtoSchemas.RawV6Schemas(ctx, list.RawV6SchemaRequest{}, &schemaResp)
 	}
 
-	if schemaResp.ProtoV6IdentitySchema != nil {
+	resourceFuncs, _ := s.FrameworkServer.ResourceFuncs(ctx)
+
+	if schemaResp.ProtoV6Schema != nil && schemaResp.ProtoV6IdentitySchema != nil {
 		var err error
 
 		req.ResourceSchema, err = fromproto6.ResourceSchema(ctx, schemaResp.ProtoV6Schema)
@@ -80,7 +83,7 @@ func (s *Server) ListResource(ctx context.Context, protoReq *tfprotov6.ListResou
 			allDiags.Append(diags...)
 			return ListRequestErrorDiagnostics(ctx, allDiags...)
 		}
-	} else {
+	} else if _, ok := resourceFuncs[protoReq.TypeName]; ok && schemaResp.ProtoV6Schema == nil && schemaResp.ProtoV6IdentitySchema == nil {
 		req.ResourceSchema, diags = s.FrameworkServer.ResourceSchema(ctx, protoReq.TypeName)
 		allDiags.Append(diags...)
 		if diags.HasError() {
@@ -92,6 +95,16 @@ func (s *Server) ListResource(ctx context.Context, protoReq *tfprotov6.ListResou
 		if diags.HasError() {
 			return ListRequestErrorDiagnostics(ctx, allDiags...)
 		}
+	} else {
+		diags.AddError(
+			"ListResource Type Defined without a Matching Managed Resource Type",
+			fmt.Sprintf("The %s ListResource type name was returned, but no matching managed Resource type was defined. ", protoReq.TypeName)+
+				"If the matching managed Resource type is not a framework resource either ProtoV5Schema and ProtoV5IdentitySchema must be specified in the RawV5Schemas method, "+
+				"or ProtoV6Schema and ProtoV6IdentitySchema must be specified in the RawV6Schemas method. "+
+				"This is always an issue with the provider and should be reported to the provider developers.",
+		)
+		allDiags.Append(diags...)
+		return ListRequestErrorDiagnostics(ctx, allDiags...)
 	}
 
 	stream := &fwserver.ListResultsStream{}
